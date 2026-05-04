@@ -4,12 +4,13 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>The Sedimentary Basin - A Diary</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css"> <!-- For arrow icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+
     <style>
         :root {
-            --brown-dark: #6F4F28; /* Darker brown for buttons */
-            --brown-medium: #8B6B4C; /* Medium brown for hover */
-            --brown-light: #A58B78; /* Lighter brown for disabled */
+            --brown-dark: #6F4F28;
+            --brown-medium: #8B6B4C;
+            --brown-light: #A58B78;
         }
 
         body {
@@ -20,81 +21,69 @@
             justify-content: center;
             min-height: 100vh;
             margin: 0;
-            background-color: #1a1a1a; /* Dark background */
+            background-color: #1a1a1a;
             color: #e0e0e0;
-            overflow: hidden; /* Hide scrollbars if content overflows slightly */
+            overflow: hidden;
         }
+
         .reader-container {
             position: relative;
-            width: 95vw; /* Almost full width */
-            height: 95vh; /* Almost full height */
+            width: 95vw;
+            height: 95vh;
             display: flex;
             align-items: center;
             justify-content: center;
-            background-color: #000; /* Pure black for the main content area */
+            background-color: #000;
             box-shadow: 0 0 20px rgba(0,0,0,0.5);
-            overflow: hidden; /* Ensure content doesn't overflow */
         }
-        /* currentPageImage现在是一个容器，它将持有实际的图片 */
-        .page-image-wrapper {
-            max-width: 98%; /* Ensure image fits within container */
-            max-height: 98%;
-            width: auto;
-            height: auto;
-            object-fit: contain; /* Ensures the entire image is visible without cropping */
-            display: block;
-            position: relative; /* For absolute positioning of loading indicator */
-        }
+
+        /* ✅ 只改这里 */
         .page-image {
-            max-width: 100%;
-            max-height: 100%;
+            width: 100%;
+            height: 100%;
             object-fit: contain;
+            object-position: center center;
             display: block;
+
             opacity: 1;
-            filter: blur(0px); /* Initial state: no blur */
+            filter: blur(0px);
             transition: opacity 0.8s ease-in-out, filter 0.8s ease-in-out;
         }
-        /* Class for dissolve-out effect */
+
         .dissolve-out {
             opacity: 0 !important;
-            filter: blur(10px) !important; /* Blur significantly when fading out */
-        }
-        /* Class for dissolve-in effect */
-        .dissolve-in {
-            opacity: 1 !important;
-            filter: blur(0px) !important;
+            filter: blur(10px) !important;
         }
 
         .nav-button {
             position: absolute;
             top: 50%;
             transform: translateY(-50%);
-            background-color: rgba(0, 0, 0, 0.5); /* Semi-transparent black */
+            background-color: rgba(0, 0, 0, 0.5);
             color: white;
             border: none;
             padding: 20px 15px;
             font-size: 30px;
             cursor: pointer;
-            z-index: 100; /* Ensure buttons are above image */
+            z-index: 100;
             transition: background-color 0.3s ease;
             border-radius: 5px;
         }
+
         .nav-button:hover:not(:disabled) {
             background-color: rgba(0, 0, 0, 0.8);
         }
+
         .nav-button:disabled {
             background-color: rgba(0, 0, 0, 0.2);
             cursor: not-allowed;
             color: #888;
         }
-        #prevBtn {
-            left: 10px;
-        }
-        #nextBtn {
-            right: 10px;
-        }
 
-        .controls-bottom { /* Kept for page info, but its position is absolute */
+        #prevBtn { left: 10px; }
+        #nextBtn { right: 10px; }
+
+        .controls-bottom {
             position: absolute;
             bottom: 10px;
             left: 50%;
@@ -107,13 +96,13 @@
             border-radius: 8px;
             z-index: 200;
         }
+
         .page-info {
             font-size: 16px;
             font-weight: bold;
             color: #ccc;
         }
 
-        /* New top-right controls container */
         .controls-top-right {
             position: absolute;
             top: 10px;
@@ -121,314 +110,167 @@
             display: flex;
             gap: 10px;
             align-items: center;
-            background-color: rgba(0, 0, 0, 0.6); /* Semi-transparent background */
+            background-color: rgba(0, 0, 0, 0.6);
             padding: 10px 15px;
             border-radius: 8px;
             z-index: 200;
         }
+
         .controls-top-right button {
             padding: 8px 15px;
             font-size: 14px;
-            background-color: var(--brown-dark); /* Brown color for buttons */
+            background-color: var(--brown-dark);
             color: white;
             border: none;
             border-radius: 4px;
             cursor: pointer;
             transition: background-color 0.3s ease;
         }
+
         .controls-top-right button:hover {
             background-color: var(--brown-medium);
         }
+
         .controls-top-right button:disabled {
             background-color: var(--brown-light);
             cursor: not-allowed;
         }
-        /* Style for the BGM status text */
+
         .bgm-status {
             font-size: 14px;
             color: #fff;
-            margin-left: -5px; /* Adjust spacing */
+            margin-left: -5px;
             margin-right: 5px;
-        }
-
-        /* Loading Spinner */
-        .spinner {
-            border: 4px solid rgba(255, 255, 255, 0.3);
-            border-top: 4px solid #fff;
-            border-radius: 50%;
-            width: 30px;
-            height: 30px;
-            animation: spin 1s linear infinite;
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            z-index: 50; /* Below nav buttons, above image */
-        }
-
-        @keyframes spin {
-            0% { transform: translate(-50%, -50%) rotate(0deg); }
-            100% { transform: translate(-50%, -50%) rotate(360deg); }
         }
     </style>
 </head>
+
 <body>
 
-    <div class="reader-container">
-        <!-- currentPageImage现在是包裹实际图片的容器 -->
-        <div id="currentPageImageWrapper" class="page-image-wrapper">
-            <!-- 初始时可以放一个空的图片或一个占位符 -->
-            <img id="currentPageActualImage" class="page-image" src="" alt="Diary Page">
-        </div>
-        
-        <div id="loadingSpinner" class="spinner" style="display: none;"></div>
+<div class="reader-container">
+    <img id="currentPageImage" class="page-image" src="" alt="Diary Page">
 
+    <button id="prevBtn" class="nav-button" onclick="changePage(-1)">
+        <i class="fas fa-chevron-left"></i>
+    </button>
 
-        <button id="prevBtn" class="nav-button" onclick="changePage(-1)" disabled>
-            <i class="fas fa-chevron-left"></i>
-        </button>
-        <button id="nextBtn" class="nav-button" onclick="changePage(1)" disabled>
-            <i class="fas fa-chevron-right"></i>
-        </button>
+    <button id="nextBtn" class="nav-button" onclick="changePage(1)">
+        <i class="fas fa-chevron-right"></i>
+    </button>
 
-        <!-- Page Info remains at the bottom center -->
-        <div class="controls-bottom">
-            <span id="pageInfo" class="page-info"></span>
-        </div>
-
-        <!-- New top-right controls for language and BGM -->
-        <div class="controls-top-right">
-            <button id="langToggleBtn" onclick="toggleLanguage()">Switch to English</button>
-            
-            <!-- Simplified BGM control -->
-            <audio id="backgroundMusic" loop>
-                <!-- 请将 'audio/bgm.mp3' 替换为你的BGM文件路径 -->
-                <source src="audio/bgm.mp3" type="audio/mpeg">
-                Your browser does not support the audio element.
-            </audio>
-            <span id="bgmStatusText" class="bgm-status">BGM: ON</span> <!-- Added text span -->
-            <button id="muteToggleBtn" onclick="toggleMute()">
-                <i class="fas fa-volume-up"></i> <!-- Default to unmuted icon -->
-            </button>
-        </div>
+    <div class="controls-bottom">
+        <span id="pageInfo" class="page-info"></span>
     </div>
 
-    <script>
-        const totalPages = 17;
-        let currentPage = 1;
-        let isEnglish = false; // Start with Chinese by default
-        let isMuted = false; // Default to unmuted for the new logic
-        let isLoadingImage = false; // Flag to prevent multiple page changes while loading
+    <div class="controls-top-right">
+        <button id="langToggleBtn" onclick="toggleLanguage()">Switch to English</button>
 
-        // Image paths based on your naming convention
-        const imagePaths = {
-            zh: [],
-            en: []
-        };
+        <audio id="backgroundMusic" loop>
+            <source src="audio/bgm.mp3" type="audio/mpeg">
+        </audio>
 
-        // Populate image paths
-        for (let i = 1; i <= totalPages; i++) {
-            // For Chinese, always use i.png
-            imagePaths.zh.push(`images/${i}.png`);
+        <span id="bgmStatusText" class="bgm-status">BGM: ON</span>
 
-            // For English, adjust padding based on page number
-            if (i === 1) {
-                imagePaths.en.push(`images/en/${i}.png`); // Assuming English images are in an 'en' subfolder
-            } else if (i >= 2 && i <= 9) { // Pages 2-9 will be 02.png to 09.png
-                imagePaths.en.push(`images/en/${String(i).padStart(2, '0')}.jpg`);
-            } else { // Pages 10-17 will be 010.png to 017.png
-                imagePaths.en.push(`images/en/${String(i).padStart(3, '0')}.jpg`);
-            }
-        }
-        
-        const currentPageImageWrapper = document.getElementById('currentPageImageWrapper');
-        const currentPageActualImage = document.getElementById('currentPageActualImage');
-        const prevBtn = document.getElementById('prevBtn');
-        const nextBtn = document.getElementById('nextBtn');
-        const pageInfo = document.getElementById('pageInfo');
-        const langToggleBtn = document.getElementById('langToggleBtn');
-        const backgroundMusic = document.getElementById('backgroundMusic');
-        const muteToggleBtn = document.getElementById('muteToggleBtn');
-        const bgmStatusText = document.getElementById('bgmStatusText');
-        const loadingSpinner = document.getElementById('loadingSpinner');
+        <button id="muteToggleBtn" onclick="toggleMute()">
+            <i class="fas fa-volume-up"></i>
+        </button>
+    </div>
+</div>
 
-        // Set initial volume to max
-        backgroundMusic.volume = 1;
+<script>
+const totalPages = 17;
+let currentPage = 1;
+let isEnglish = false;
+let isMuted = false;
 
-        // --- 图片加载和切换逻辑 (Lazy Loading & Preloading) ---
-        function getImagePath(page, language) {
-            return imagePaths[language][page - 1];
-        }
+const imagePaths = { zh: [], en: [] };
 
-        // 预加载图片
-        const imageCache = {}; // 缓存已加载的图片对象
+for (let i = 1; i <= totalPages; i++) {
+    imagePaths.zh.push(`images/${i}.jpg`);
 
-        function preloadImage(page, language) {
-            const path = getImagePath(page, language);
-            if (!imageCache[path]) {
-                const img = new Image();
-                img.src = path;
-                imageCache[path] = img;
-                console.log(`Preloading: ${path}`);
-            }
-        }
+    if (i === 1) {
+        imagePaths.en.push(`images/1.jpg`);
+    } else if (i <= 9) {
+        imagePaths.en.push(`images/${String(i).padStart(2, '0')}.jpg`);
+    } else {
+        imagePaths.en.push(`images/${String(i).padStart(3, '0')}.jpg`);
+    }
+}
 
-        function loadImageAndTransition(page, language) {
-            isLoadingImage = true; // Set loading flag
-            loadingSpinner.style.display = 'block'; // Show spinner
-            disableNavigationButtons(); // Disable buttons during load
+const currentPageImage = document.getElementById('currentPageImage');
+const prevBtn = document.getElementById('prevBtn');
+const nextBtn = document.getElementById('nextBtn');
+const pageInfo = document.getElementById('pageInfo');
+const langToggleBtn = document.getElementById('langToggleBtn');
+const backgroundMusic = document.getElementById('backgroundMusic');
+const muteToggleBtn = document.getElementById('muteToggleBtn');
+const bgmStatusText = document.getElementById('bgmStatusText');
 
-            const targetImagePath = getImagePath(page, language);
-            console.log(`Loading image: ${targetImagePath}`);
+backgroundMusic.volume = 1;
 
-            // Apply dissolve-out effect to the current image
-            currentPageActualImage.classList.add('dissolve-out');
+function updateImageSource() {
+    const langPrefix = isEnglish ? 'en' : 'zh';
+    currentPageImage.src = imagePaths[langPrefix][currentPage - 1];
+}
 
-            // Wait for the dissolve-out transition to complete
-            setTimeout(() => {
-                // Check if the image is already in cache
-                if (imageCache[targetImagePath] && imageCache[targetImagePath].complete) {
-                    console.log(`Image from cache: ${targetImagePath}`);
-                    currentPageActualImage.src = targetImagePath;
-                    transitionInComplete();
-                } else {
-                    // Create a new Image object to handle loading
-                    const img = new Image();
-                    img.src = targetImagePath;
+function updateUI() {
+    pageInfo.textContent = `Page ${currentPage} / ${totalPages}`;
+    prevBtn.disabled = currentPage === 1;
+    nextBtn.disabled = currentPage === totalPages;
+    langToggleBtn.textContent = isEnglish ? '切换至中文' : 'Switch to English';
 
-                    img.onload = () => {
-                        console.log(`Image loaded: ${targetImagePath}`);
-                        imageCache[targetImagePath] = img; // Cache the loaded image
-                        currentPageActualImage.src = targetImagePath;
-                        transitionInComplete();
-                    };
+    if (isMuted) {
+        muteToggleBtn.innerHTML = '<i class="fas fa-volume-mute"></i>';
+        bgmStatusText.textContent = 'BGM: OFF';
+    } else {
+        muteToggleBtn.innerHTML = '<i class="fas fa-volume-up"></i>';
+        bgmStatusText.textContent = 'BGM: ON';
+    }
+}
 
-                    img.onerror = (e) => {
-                        console.error(`Error loading image: ${targetImagePath}`, e);
-                        // Fallback or error handling
-                        loadingSpinner.style.display = 'none';
-                        enableNavigationButtons();
-                        isLoadingImage = false;
-                        // Still attempt to transition in, even if broken
-                        transitionInComplete(); 
-                    };
-                }
-            }, 800); // This should match the CSS transition duration for dissolve-out
-        }
+function changePage(direction) {
+    const newPage = currentPage + direction;
+    if (newPage >= 1 && newPage <= totalPages) {
+        currentPageImage.classList.add('dissolve-out');
 
-        function transitionInComplete() {
-            currentPageActualImage.classList.remove('dissolve-out');
-            currentPageActualImage.classList.add('dissolve-in'); // Add dissolve-in for fresh transition
-
-            // Remove dissolve-in after its transition to reset for next cycle
-            currentPageActualImage.addEventListener('transitionend', function handler() {
-                currentPageActualImage.classList.remove('dissolve-in');
-                currentPageActualImage.removeEventListener('transitionend', handler);
-
-                loadingSpinner.style.display = 'none'; // Hide spinner
-                enableNavigationButtons(); // Re-enable buttons
-                isLoadingImage = false; // Reset loading flag
-                updateUI(); // Update page info and button states
-            }, { once: true });
-        }
-
-
-        // --- UI 更新和事件处理 ---
-
-        function disableNavigationButtons() {
-            prevBtn.disabled = true;
-            nextBtn.disabled = true;
-        }
-
-        function enableNavigationButtons() {
-            prevBtn.disabled = currentPage === 1;
-            nextBtn.disabled = currentPage === totalPages;
-        }
-
-        function updateUI() {
-            pageInfo.textContent = `Page ${currentPage} / ${totalPages}`;
-            enableNavigationButtons(); // Ensure buttons are correctly enabled/disabled
-            langToggleBtn.textContent = isEnglish ? '切换至中文' : 'Switch to English';
-            
-            // Update BGM button icon and text
-            if (isMuted) {
-                muteToggleBtn.innerHTML = '<i class="fas fa-volume-mute"></i>';
-                bgmStatusText.textContent = 'BGM: OFF';
-            } else {
-                muteToggleBtn.innerHTML = '<i class="fas fa-volume-up"></i>';
-                bgmStatusText.textContent = 'BGM: ON';
-            }
-        }
-
-        function changePage(direction) {
-            if (isLoadingImage) return; // Prevent changing page if an image is currently loading
-
-            const newPage = currentPage + direction;
-            if (newPage >= 1 && newPage <= totalPages) {
-                currentPage = newPage;
-                loadImageAndTransition(currentPage, isEnglish ? 'en' : 'zh');
-                
-                // Preload next and previous pages for smoother experience
-                if (currentPage + 1 <= totalPages) {
-                    preloadImage(currentPage + 1, isEnglish ? 'en' : 'zh');
-                }
-                if (currentPage - 1 >= 1) {
-                    preloadImage(currentPage - 1, isEnglish ? 'en' : 'zh');
-                }
-            }
-        }
-
-        function toggleLanguage() {
-            if (isLoadingImage) return;
-
-            isEnglish = !isEnglish;
-            loadImageAndTransition(currentPage, isEnglish ? 'en' : 'zh');
-            
-            // Re-preload based on new language
-            preloadImage(currentPage, isEnglish ? 'en' : 'zh'); // Preload current page in new language
-            if (currentPage + 1 <= totalPages) {
-                preloadImage(currentPage + 1, isEnglish ? 'en' : 'zh');
-            }
-            if (currentPage - 1 >= 1) {
-                preloadImage(currentPage - 1, isEnglish ? 'en' : 'zh');
-            }
-        }
-
-        function toggleMute() {
-            if (backgroundMusic.muted) {
-                backgroundMusic.muted = false;
-                isMuted = false;
-                backgroundMusic.play().catch(e => console.log("Play unmuted BGM failed:", e)); // Try to play if it wasn't playing
-            } else {
-                backgroundMusic.muted = true;
-                isMuted = true;
-            }
+        setTimeout(() => {
+            currentPage = newPage;
+            updateImageSource();
+            currentPageImage.classList.remove('dissolve-out');
             updateUI();
-        }
+        }, 800);
+    }
+}
 
-        // Initialize the page on load
-        window.addEventListener('load', () => {
-            loadImageAndTransition(currentPage, isEnglish ? 'en' : 'zh'); // Load initial image
-            
-            // Preload adjacent pages for initial smooth navigation
-            if (currentPage + 1 <= totalPages) {
-                preloadImage(currentPage + 1, isEnglish ? 'en' : 'zh');
-            }
+function toggleLanguage() {
+    isEnglish = !isEnglish;
+    updateImageSource();
+    updateUI();
+}
 
-            backgroundMusic.play().then(() => {
-                // Autoplay succeeded
-                isMuted = false; // Ensure UI reflects playing state
-                updateUI();
-            }).catch(error => {
-                console.log("BGM autoplay prevented:", error);
-                // Autoplay failed, likely due to browser policy.
-                backgroundMusic.muted = true; // Manually mute if autoplay was prevented
-                isMuted = true; // Update internal state for UI
-                updateUI(); // Reflect the muted state in the UI
-            });
-        });
-        // --- End BGM Auto-play logic ---
-    </script>
+function toggleMute() {
+    if (backgroundMusic.muted) {
+        backgroundMusic.muted = false;
+        isMuted = false;
+        backgroundMusic.play().catch(() => {});
+    } else {
+        backgroundMusic.muted = true;
+        isMuted = true;
+    }
+    updateUI();
+}
+
+updateImageSource();
+updateUI();
+
+window.addEventListener('load', () => {
+    backgroundMusic.play().catch(() => {
+        backgroundMusic.muted = true;
+        isMuted = true;
+        updateUI();
+    });
+});
+</script>
 
 </body>
 </html>
