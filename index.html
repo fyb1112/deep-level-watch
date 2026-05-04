@@ -33,23 +33,36 @@
             justify-content: center;
             background-color: #000; /* Pure black for the main content area */
             box-shadow: 0 0 20px rgba(0,0,0,0.5);
+            overflow: hidden; /* Ensure content doesn't overflow */
         }
-        .page-image {
+        /* currentPageImage现在是一个容器，它将持有实际的图片 */
+        .page-image-wrapper {
             max-width: 98%; /* Ensure image fits within container */
             max-height: 98%;
             width: auto;
             height: auto;
             object-fit: contain; /* Ensures the entire image is visible without cropping */
             display: block;
+            position: relative; /* For absolute positioning of loading indicator */
+        }
+        .page-image {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+            display: block;
             opacity: 1;
             filter: blur(0px); /* Initial state: no blur */
-            /* Combined transition for opacity and filter for a "dissolve" feel */
             transition: opacity 0.8s ease-in-out, filter 0.8s ease-in-out;
         }
         /* Class for dissolve-out effect */
         .dissolve-out {
             opacity: 0 !important;
             filter: blur(10px) !important; /* Blur significantly when fading out */
+        }
+        /* Class for dissolve-in effect */
+        .dissolve-in {
+            opacity: 1 !important;
+            filter: blur(0px) !important;
         }
 
         .nav-button {
@@ -137,17 +150,44 @@
             margin-left: -5px; /* Adjust spacing */
             margin-right: 5px;
         }
+
+        /* Loading Spinner */
+        .spinner {
+            border: 4px solid rgba(255, 255, 255, 0.3);
+            border-top: 4px solid #fff;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 50; /* Below nav buttons, above image */
+        }
+
+        @keyframes spin {
+            0% { transform: translate(-50%, -50%) rotate(0deg); }
+            100% { transform: translate(-50%, -50%) rotate(360deg); }
+        }
     </style>
 </head>
 <body>
 
     <div class="reader-container">
-        <img id="currentPageImage" class="page-image" src="" alt="Diary Page">
+        <!-- currentPageImage现在是包裹实际图片的容器 -->
+        <div id="currentPageImageWrapper" class="page-image-wrapper">
+            <!-- 初始时可以放一个空的图片或一个占位符 -->
+            <img id="currentPageActualImage" class="page-image" src="" alt="Diary Page">
+        </div>
+        
+        <div id="loadingSpinner" class="spinner" style="display: none;"></div>
 
-        <button id="prevBtn" class="nav-button" onclick="changePage(-1)">
+
+        <button id="prevBtn" class="nav-button" onclick="changePage(-1)" disabled>
             <i class="fas fa-chevron-left"></i>
         </button>
-        <button id="nextBtn" class="nav-button" onclick="changePage(1)">
+        <button id="nextBtn" class="nav-button" onclick="changePage(1)" disabled>
             <i class="fas fa-chevron-right"></i>
         </button>
 
@@ -178,6 +218,7 @@
         let currentPage = 1;
         let isEnglish = false; // Start with Chinese by default
         let isMuted = false; // Default to unmuted for the new logic
+        let isLoadingImage = false; // Flag to prevent multiple page changes while loading
 
         // Image paths based on your naming convention
         const imagePaths = {
@@ -192,36 +233,121 @@
 
             // For English, adjust padding based on page number
             if (i === 1) {
-                imagePaths.en.push(`images/1.png`); 
+                imagePaths.en.push(`images/en/${i}.png`); // Assuming English images are in an 'en' subfolder
             } else if (i >= 2 && i <= 9) { // Pages 2-9 will be 02.png to 09.png
-                imagePaths.en.push(`images/${String(i).padStart(2, '0')}.png`);
+                imagePaths.en.push(`images/en/${String(i).padStart(2, '0')}.jpg`);
             } else { // Pages 10-17 will be 010.png to 017.png
-                // Pad with '0' to make it three digits if needed, e.g., 010, 011
-                imagePaths.en.push(`images/${String(i).padStart(3, '0')}.png`);
+                imagePaths.en.push(`images/en/${String(i).padStart(3, '0')}.jpg`);
             }
         }
         
-        const currentPageImage = document.getElementById('currentPageImage');
+        const currentPageImageWrapper = document.getElementById('currentPageImageWrapper');
+        const currentPageActualImage = document.getElementById('currentPageActualImage');
         const prevBtn = document.getElementById('prevBtn');
         const nextBtn = document.getElementById('nextBtn');
         const pageInfo = document.getElementById('pageInfo');
         const langToggleBtn = document.getElementById('langToggleBtn');
         const backgroundMusic = document.getElementById('backgroundMusic');
         const muteToggleBtn = document.getElementById('muteToggleBtn');
-        const bgmStatusText = document.getElementById('bgmStatusText'); // Get the new text element
+        const bgmStatusText = document.getElementById('bgmStatusText');
+        const loadingSpinner = document.getElementById('loadingSpinner');
 
         // Set initial volume to max
         backgroundMusic.volume = 1;
 
-        function updateImageSource() {
-            const langPrefix = isEnglish ? 'en' : 'zh';
-            currentPageImage.src = imagePaths[langPrefix][currentPage - 1];
+        // --- 图片加载和切换逻辑 (Lazy Loading & Preloading) ---
+        function getImagePath(page, language) {
+            return imagePaths[language][page - 1];
+        }
+
+        // 预加载图片
+        const imageCache = {}; // 缓存已加载的图片对象
+
+        function preloadImage(page, language) {
+            const path = getImagePath(page, language);
+            if (!imageCache[path]) {
+                const img = new Image();
+                img.src = path;
+                imageCache[path] = img;
+                console.log(`Preloading: ${path}`);
+            }
+        }
+
+        function loadImageAndTransition(page, language) {
+            isLoadingImage = true; // Set loading flag
+            loadingSpinner.style.display = 'block'; // Show spinner
+            disableNavigationButtons(); // Disable buttons during load
+
+            const targetImagePath = getImagePath(page, language);
+            console.log(`Loading image: ${targetImagePath}`);
+
+            // Apply dissolve-out effect to the current image
+            currentPageActualImage.classList.add('dissolve-out');
+
+            // Wait for the dissolve-out transition to complete
+            setTimeout(() => {
+                // Check if the image is already in cache
+                if (imageCache[targetImagePath] && imageCache[targetImagePath].complete) {
+                    console.log(`Image from cache: ${targetImagePath}`);
+                    currentPageActualImage.src = targetImagePath;
+                    transitionInComplete();
+                } else {
+                    // Create a new Image object to handle loading
+                    const img = new Image();
+                    img.src = targetImagePath;
+
+                    img.onload = () => {
+                        console.log(`Image loaded: ${targetImagePath}`);
+                        imageCache[targetImagePath] = img; // Cache the loaded image
+                        currentPageActualImage.src = targetImagePath;
+                        transitionInComplete();
+                    };
+
+                    img.onerror = (e) => {
+                        console.error(`Error loading image: ${targetImagePath}`, e);
+                        // Fallback or error handling
+                        loadingSpinner.style.display = 'none';
+                        enableNavigationButtons();
+                        isLoadingImage = false;
+                        // Still attempt to transition in, even if broken
+                        transitionInComplete(); 
+                    };
+                }
+            }, 800); // This should match the CSS transition duration for dissolve-out
+        }
+
+        function transitionInComplete() {
+            currentPageActualImage.classList.remove('dissolve-out');
+            currentPageActualImage.classList.add('dissolve-in'); // Add dissolve-in for fresh transition
+
+            // Remove dissolve-in after its transition to reset for next cycle
+            currentPageActualImage.addEventListener('transitionend', function handler() {
+                currentPageActualImage.classList.remove('dissolve-in');
+                currentPageActualImage.removeEventListener('transitionend', handler);
+
+                loadingSpinner.style.display = 'none'; // Hide spinner
+                enableNavigationButtons(); // Re-enable buttons
+                isLoadingImage = false; // Reset loading flag
+                updateUI(); // Update page info and button states
+            }, { once: true });
+        }
+
+
+        // --- UI 更新和事件处理 ---
+
+        function disableNavigationButtons() {
+            prevBtn.disabled = true;
+            nextBtn.disabled = true;
+        }
+
+        function enableNavigationButtons() {
+            prevBtn.disabled = currentPage === 1;
+            nextBtn.disabled = currentPage === totalPages;
         }
 
         function updateUI() {
             pageInfo.textContent = `Page ${currentPage} / ${totalPages}`;
-            prevBtn.disabled = currentPage === 1;
-            nextBtn.disabled = currentPage === totalPages;
+            enableNavigationButtons(); // Ensure buttons are correctly enabled/disabled
             langToggleBtn.textContent = isEnglish ? '切换至中文' : 'Switch to English';
             
             // Update BGM button icon and text
@@ -235,26 +361,37 @@
         }
 
         function changePage(direction) {
+            if (isLoadingImage) return; // Prevent changing page if an image is currently loading
+
             const newPage = currentPage + direction;
             if (newPage >= 1 && newPage <= totalPages) {
-                // Apply dissolve-out effect
-                currentPageImage.classList.add('dissolve-out');
-
-                setTimeout(() => {
-                    currentPage = newPage;
-                    updateImageSource(); // Change image source while it's faded out
-                    
-                    // Allow CSS to reset to original state, then remove the class
-                    currentPageImage.classList.remove('dissolve-out');
-                    updateUI(); // Update other UI elements
-                }, 800); // This should match the CSS transition duration
+                currentPage = newPage;
+                loadImageAndTransition(currentPage, isEnglish ? 'en' : 'zh');
+                
+                // Preload next and previous pages for smoother experience
+                if (currentPage + 1 <= totalPages) {
+                    preloadImage(currentPage + 1, isEnglish ? 'en' : 'zh');
+                }
+                if (currentPage - 1 >= 1) {
+                    preloadImage(currentPage - 1, isEnglish ? 'en' : 'zh');
+                }
             }
         }
 
         function toggleLanguage() {
+            if (isLoadingImage) return;
+
             isEnglish = !isEnglish;
-            updateImageSource(); // Change image source immediately without transition
-            updateUI(); // Update other UI elements
+            loadImageAndTransition(currentPage, isEnglish ? 'en' : 'zh');
+            
+            // Re-preload based on new language
+            preloadImage(currentPage, isEnglish ? 'en' : 'zh'); // Preload current page in new language
+            if (currentPage + 1 <= totalPages) {
+                preloadImage(currentPage + 1, isEnglish ? 'en' : 'zh');
+            }
+            if (currentPage - 1 >= 1) {
+                preloadImage(currentPage - 1, isEnglish ? 'en' : 'zh');
+            }
         }
 
         function toggleMute() {
@@ -270,11 +407,14 @@
         }
 
         // Initialize the page on load
-        updateImageSource(); // Set initial image
-        updateUI(); // Update other UI elements
-
-        // --- BGM Auto-play logic ---
         window.addEventListener('load', () => {
+            loadImageAndTransition(currentPage, isEnglish ? 'en' : 'zh'); // Load initial image
+            
+            // Preload adjacent pages for initial smooth navigation
+            if (currentPage + 1 <= totalPages) {
+                preloadImage(currentPage + 1, isEnglish ? 'en' : 'zh');
+            }
+
             backgroundMusic.play().then(() => {
                 // Autoplay succeeded
                 isMuted = false; // Ensure UI reflects playing state
